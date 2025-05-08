@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const API_URL = 'http://172.17.0.127:5000/api'; // IP de tu computadora
 
 const ResultsScreen = ({ route, navigation }: { route: any; navigation: any }) => {
     const { bmi, icc, gender, age, name, idNumber } = route.params;
@@ -52,9 +55,21 @@ const ResultsScreen = ({ route, navigation }: { route: any; navigation: any }) =
 
     const saveRecord = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/records', {
+            // Obtener el token del almacenamiento local
+            const token = await AsyncStorage.getItem('userToken');
+            
+            if (!token) {
+                Alert.alert('Error', 'Debes iniciar sesión para guardar registros');
+                navigation.navigate('Login');
+                return;
+            }
+
+            const response = await fetch(`${API_URL}/users/records`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({
                     name,
                     idNumber,
@@ -69,9 +84,11 @@ const ResultsScreen = ({ route, navigation }: { route: any; navigation: any }) =
                 Alert.alert('Éxito', 'Registro guardado correctamente.');
                 setIsSaved(true);
             } else {
-                Alert.alert('Error', 'No se pudo guardar el registro.');
+                const errorData = await response.json();
+                Alert.alert('Error', errorData.message || 'No se pudo guardar el registro.');
             }
         } catch (error) {
+            console.error('Error al guardar:', error);
             Alert.alert('Error', 'No se pudo conectar con el servidor.');
         }
     };

@@ -12,11 +12,12 @@ const {
 const authMiddleware = require('../middleware/auth');
 const router = express.Router();
 
+// Rutas públicas
 router.post('/register', registerUser);
 router.post('/login', loginUser);
-router.post('/records', createRecord);
 
-router.post('/records', authMiddleware, createRecord); // <-- Aplica el middleware aquí
+// Rutas protegidas (requieren autenticación)
+router.post('/records', authMiddleware, createRecord);
 router.get('/users', authMiddleware, getUsers);
 router.get('/users/:id', authMiddleware, getUserById);
 router.put('/users/:id', authMiddleware, updateUser);
