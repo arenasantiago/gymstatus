@@ -1,6 +1,9 @@
 # GymStatus
 
-Aplicación móvil para gestionar el estado de gimnasios desarrollada con React Native y Expo.
+Aplicación móvil (React Native + Expo) que calcula el **IMC** (Índice de Masa
+Corporal) y el **ICC** (Índice Cintura-Cadera) de una persona, interpreta el
+resultado y permite guardar, consultar, editar y eliminar registros mediante un
+backend propio en Node.js/Express sobre MongoDB.
 
 ## Requisitos Previos
 
@@ -30,11 +33,22 @@ cd ..
 ```
 
 4. Configurar variables de entorno:
-   - Crear un archivo `.env` en la carpeta `backend` con las siguientes variables:
+   - Copia `backend/.env.example` a `backend/.env` y rellena los valores:
    ```
-   MONGODB_URI=tu_uri_de_mongodb
-   PORT=3000
+   MONGODB_URI=mongodb://localhost:27017/gymstatus
+   PORT=5000
+   JWT_SECRET=una-cadena-larga-y-aleatoria
    ```
+   > El archivo `.env` NO se sube al repositorio (está en `.gitignore`).
+
+   - Opcional (frontend): si pruebas en un dispositivo/emulador real, define la
+     URL del backend accesible desde el dispositivo (no `localhost`):
+   ```bash
+   # variable de entorno de Expo
+   EXPO_PUBLIC_API_URL=http://TU_IP_LAN:5000/api
+   ```
+   Por defecto el frontend usa `10.0.2.2` en el emulador de Android y
+   `localhost` en web.
 
 ## Ejecución
 
@@ -59,15 +73,34 @@ npm start
 
 ```
 gymstatus/
-├── frontend/          # Aplicación React Native
-│   ├── components/    # Componentes reutilizables
-│   └── Navigation/    # Configuración de navegación
-├── backend/           # Servidor Node.js
-│   ├── controllers/   # Lógica de negocio
-│   ├── models/        # Modelos de MongoDB
-│   └── routes/        # Rutas de la API
-└── assets/           # Recursos estáticos
+├── frontend/              # Aplicación React Native (Expo)
+│   ├── components/        # Pantallas + UI kit reutilizable (components/ui)
+│   ├── config/            # Configuración de la API (URL base por plataforma)
+│   ├── services/          # Cliente HTTP, auth (token) y lógica de salud
+│   ├── theme/             # Sistema de diseño (colores, spacing, tipografía)
+│   └── Navigation/        # Configuración de navegación
+├── backend/               # Servidor Node.js
+│   ├── controllers/       # Lógica de negocio
+│   ├── middleware/        # Autenticación JWT
+│   ├── models/            # Modelos de MongoDB (User, Record)
+│   └── routes/            # Rutas de la API
+└── assets/                # Recursos estáticos (fuentes, iconos)
 ```
+
+## Endpoints de la API
+
+Base: `/api/users`
+
+| Método | Ruta            | Auth | Descripción                          |
+|--------|-----------------|------|--------------------------------------|
+| POST   | `/register`     | No   | Registrar usuario                    |
+| POST   | `/login`        | No   | Iniciar sesión (devuelve un JWT)     |
+| POST   | `/records`      | Sí   | Guardar un registro de salud         |
+| GET    | `/records`      | Sí   | Listar los registros del usuario     |
+| PUT    | `/records/:id`  | Sí   | Editar un registro                   |
+| DELETE | `/records/:id`  | Sí   | Eliminar un registro                 |
+
+Las rutas protegidas requieren la cabecera `Authorization: Bearer <token>`.
 
 ## Tecnologías Utilizadas
 
@@ -75,13 +108,14 @@ gymstatus/
   - React Native
   - Expo
   - React Navigation
-  - Axios
+  - AsyncStorage (persistencia del token)
 
 - Backend:
   - Node.js
   - Express
   - MongoDB
   - Mongoose
+  - JWT + bcrypt (autenticación)
 
 ## Solución de Problemas Comunes
 
