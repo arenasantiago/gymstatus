@@ -1,3 +1,6 @@
+// Debe ir primero: react-native-gesture-handler requiere importarse
+// antes que cualquier otra cosa para inicializar sus módulos nativos.
+import 'react-native-gesture-handler';
 import { registerRootComponent } from 'expo';
 
 import App from './frontend/App';

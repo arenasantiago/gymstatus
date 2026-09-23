@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Alert } from 'react-native';
-import * as FileSystem from 'expo-file-system';
+import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Screen, Title, Card, Button } from './ui';
 import { colors, spacing, fonts, fontSize } from '../theme';
@@ -40,14 +40,15 @@ const ResultsScreen = ({ route, navigation }: { route: any; navigation: any }) =
   const downloadCsv = async () => {
     try {
       const data = `Nombre,Cédula,IMC,Categoría,ICC,Riesgo\n${name},${idNumber},${bmi},${category},${icc},${risk}`;
-      const fileUri = FileSystem.documentDirectory + 'resultado-gymstatus.csv';
-      await FileSystem.writeAsStringAsync(fileUri, data, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
+      // Nueva API de expo-file-system (SDK 54+): clase File + Paths.
+      const file = new File(Paths.document, 'resultado-gymstatus.csv');
+      if (file.exists) file.delete();
+      file.create();
+      file.write(data);
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri);
+        await Sharing.shareAsync(file.uri);
       } else {
-        Alert.alert('Guardado', `Archivo generado en: ${fileUri}`);
+        Alert.alert('Guardado', `Archivo generado en: ${file.uri}`);
       }
     } catch {
       Alert.alert('Error', 'No se pudo generar el archivo.');
