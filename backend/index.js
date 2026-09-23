@@ -1,8 +1,17 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
+const dns = require('dns');
 const cors = require('cors');
 const userRoutes = require('./routes/userRoutes');
+
+// Algunos entornos (DNS IPv6 / VPN / redes corporativas) no resuelven los
+// registros SRV de `mongodb+srv://` y Node falla con `querySrv ECONNREFUSED`.
+// Forzar resolutores públicos evita ese problema sin cambiar la cadena de conexión.
+// Se puede desactivar poniendo DNS_OVERRIDE=off en el .env.
+if (process.env.DNS_OVERRIDE !== 'off') {
+    dns.setServers(['8.8.8.8', '1.1.1.1']);
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
