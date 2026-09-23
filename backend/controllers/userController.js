@@ -148,6 +148,50 @@ const createRecord = async (req, res) => {
     }
 };
 
+// Listar los registros de salud del usuario autenticado
+const getRecords = async (req, res) => {
+    try {
+        const records = await Record.find({ userId: req.user.userId }).sort({ createdAt: -1 });
+        res.status(200).json(records);
+    } catch (error) {
+        res.status(500).json({ message: "Error al obtener los registros", error: error.message });
+    }
+};
+
+// Actualizar un registro de salud (solo si pertenece al usuario)
+const updateRecord = async (req, res) => {
+    try {
+        const { name, idNumber } = req.body;
+        const record = await Record.findOneAndUpdate(
+            { _id: req.params.id, userId: req.user.userId },
+            { name, idNumber },
+            { new: true }
+        );
+        if (!record) {
+            return res.status(404).json({ message: "Registro no encontrado" });
+        }
+        res.status(200).json({ message: "Registro actualizado", record });
+    } catch (error) {
+        res.status(500).json({ message: "Error al actualizar el registro", error: error.message });
+    }
+};
+
+// Eliminar un registro de salud (solo si pertenece al usuario)
+const deleteRecord = async (req, res) => {
+    try {
+        const record = await Record.findOneAndDelete({
+            _id: req.params.id,
+            userId: req.user.userId,
+        });
+        if (!record) {
+            return res.status(404).json({ message: "Registro no encontrado" });
+        }
+        res.status(200).json({ message: "Registro eliminado" });
+    } catch (error) {
+        res.status(500).json({ message: "Error al eliminar el registro", error: error.message });
+    }
+};
+
 
 
 module.exports = {
@@ -158,4 +202,7 @@ module.exports = {
     updateUser,
     deleteUser,
     createRecord,
+    getRecords,
+    updateRecord,
+    deleteRecord,
 };

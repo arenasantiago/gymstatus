@@ -3,8 +3,6 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const userRoutes = require('./routes/userRoutes');
-const Record = require('./models/Record');
-const authMiddleware = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
