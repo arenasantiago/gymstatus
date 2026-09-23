@@ -1,134 +1,66 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { Alert } from 'react-native';
+import { Screen, Title, Subtitle, Card, Field, Button } from './ui';
+import { apiRequest } from '../services/apiClient';
+import { saveToken } from '../services/auth';
 
 const LoginScreen = ({ navigation }: { navigation: any }) => {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-    const handleLogin = async () => {
-        if (!username || !password) {
-            Alert.alert('Error', 'Por favor ingresa tu usuario y contraseña.');
-            return;
-        }
+  const handleLogin = async () => {
+    if (!username || !password) {
+      Alert.alert('Error', 'Por favor ingresa tu usuario y contraseña.');
+      return;
+    }
 
-        try {
-            const response = await fetch('http://localhost:5000/api/users/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password }),
-            });
+    setLoading(true);
+    try {
+      const data = await apiRequest<{ token: string }>('/users/login', {
+        method: 'POST',
+        body: { username, password },
+      });
+      // Persistir el token para que las pantallas protegidas puedan usarlo.
+      await saveToken(data.token);
+      navigation.navigate('CalculationScreen');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'No se pudo iniciar sesión.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-            const data = await response.json();
+  return (
+    <Screen center>
+      <Title>GymStatus</Title>
+      <Subtitle>Inicia sesión para continuar</Subtitle>
 
-            if (response.ok) {
-                navigation.navigate('CalculationScreen');
-            } else {
-                Alert.alert('Error', data.message);
-            }
-        } catch (error) {
-            Alert.alert('Error', 'No se pudo conectar con el servidor');
-        }
-    };
+      <Card>
+        <Field
+          label="Usuario"
+          placeholder="Tu usuario"
+          autoCapitalize="none"
+          value={username}
+          onChangeText={setUsername}
+        />
+        <Field
+          label="Contraseña"
+          placeholder="Tu contraseña"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
+      </Card>
 
-    const handleViewLogs = () => {
-        navigation.navigate('Logs');
-    };
-
-    return (
-        <View style={styles.container}>
-            <Text style={styles.title}>GymStatus</Text>
-            <Text style={styles.subtitle}>Login</Text>
-
-            <View style={styles.inputContainer}>
-                <TextInput
-                    style={styles.input}
-                    placeholder="Usuario"
-                    placeholderTextColor="#A3D2A5"
-                    value={username}
-                    onChangeText={setUsername}
-                />
-                <TextInput
-                    style={styles.input}
-                    placeholder="Contraseña"
-                    placeholderTextColor="#A3D2A5"
-                    secureTextEntry
-                    value={password}
-                    onChangeText={setPassword}
-                />
-            </View>
-
-            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-                <Text style={styles.loginButtonText}>Ingresar</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.logsButton} onPress={handleViewLogs}>
-                <Text style={styles.logsButtonText}>Ver registro</Text>
-            </TouchableOpacity>
-        </View>
-    );
+      <Button title="Ingresar" onPress={handleLogin} loading={loading} />
+      <Button
+        title="Ver registros"
+        variant="secondary"
+        onPress={() => navigation.navigate('Logs')}
+      />
+    </Screen>
+  );
 };
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#000000',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 20,
-    },
-    title: {
-        fontSize: 50,
-        fontFamily: 'RubikVinyl-Regular',
-        color: '#32FF09',
-        marginBottom: 20,
-    },
-    subtitle: {
-        fontSize: 24,
-        fontFamily: 'Inter-Regular',
-        color: '#FFFFFF',
-        marginBottom: 30,
-    },
-    inputContainer: {
-        width: '100%',
-        backgroundColor: '#468A34',
-        borderRadius: 10,
-        padding: 20,
-        marginBottom: 30,
-    },
-    input: {
-        backgroundColor: '#2E6626',
-        borderRadius: 5,
-        color: '#FFFFFF',
-        padding: 10,
-        marginBottom: 15,
-        fontSize: 16,
-        fontFamily: 'Inter-Regular',
-    },
-    loginButton: {
-        backgroundColor: '#32FF09',
-        paddingVertical: 15,
-        paddingHorizontal: 50,
-        borderRadius: 30,
-        marginBottom: 15,
-    },
-    loginButtonText: {
-        color: '#000000',
-        fontSize: 18,
-        fontFamily: 'Inter-Bold',
-        textAlign: 'center',
-    },
-    logsButton: {
-        backgroundColor: '#468A34',
-        paddingVertical: 10,
-        paddingHorizontal: 40,
-        borderRadius: 30,
-    },
-    logsButtonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontFamily: 'Inter-Regular',
-        textAlign: 'center',
-    },
-});
 
 export default LoginScreen;

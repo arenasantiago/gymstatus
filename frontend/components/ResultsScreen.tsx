@@ -1,168 +1,119 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, Alert } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const API_URL = 'http://172.17.0.127:5000/api'; // IP de tu computadora
+import { Screen, Title, Card, Button } from './ui';
+import { colors, spacing, fonts, fontSize } from '../theme';
+import { bmiColor, riskColor } from '../theme';
+import { bmiCategory, iccRisk } from '../services/health';
+import { apiRequest } from '../services/apiClient';
 
 const ResultsScreen = ({ route, navigation }: { route: any; navigation: any }) => {
-    const { bmi, icc, gender, age, name, idNumber } = route.params;
-    const [isSaved, setIsSaved] = useState(false);
+  const { bmi, icc, gender, age, name, idNumber } = route.params;
+  const [isSaved, setIsSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-    const getBMICategory = (bmi: number) => {
-        if (bmi < 18.5) return 'Bajo';
-        if (bmi >= 18.5 && bmi <= 24.9) return 'Normal';
-        if (bmi >= 25.0 && bmi <= 29.9) return 'Sobrepeso';
-        if (bmi >= 30.0 && bmi <= 34.9) return 'Obesidad I';
-        if (bmi >= 35.0 && bmi <= 39.9) return 'Obesidad II';
-        return 'Obesidad III';
-    };
+  const bmiNum = parseFloat(bmi);
+  const iccNum = parseFloat(icc);
+  const category = bmiCategory(bmiNum);
+  const risk = iccRisk(iccNum, gender, age);
 
-    const getICCRisk = (icc: number, gender: string, age: number) => {
-        const ranges = gender === 'male' ? maleRanges : femaleRanges;
-        const ageGroup = Object.keys(ranges).find((key) => {
-            const [min, max] = key.split('-').map(Number);
-            return age >= min && age <= max;
-        });
+  const saveRecord = async () => {
+    setSaving(true);
+    try {
+      await apiRequest('/records', {
+        method: 'POST',
+        auth: true,
+        body: { name, idNumber, bmi: bmiNum, icc: iccNum, gender, age },
+      });
+      Alert.alert('Éxito', 'Registro guardado correctamente.');
+      setIsSaved(true);
+    } catch (error: any) {
+      const msg = error.message || 'No se pudo guardar el registro.';
+      Alert.alert('Error', msg);
+      if (msg.includes('sesión')) navigation.navigate('Login');
+    } finally {
+      setSaving(false);
+    }
+  };
 
-        if (!ageGroup) return 'Desconocido';
-
-        const [low, moderate, high, veryHigh] = ranges[ageGroup];
-        if (icc < low) return 'Bajo';
-        if (icc >= low && icc < moderate) return 'Moderado';
-        if (icc >= moderate && icc < high) return 'Alto';
-        return 'Muy Alto';
-    };
-
-    const maleRanges = {
-        '18-29': [0.83, 0.88, 0.94],
-        '30-39': [0.84, 0.91, 0.96],
-        '40-49': [0.88, 0.95, 1.0],
-        '50-59': [0.9, 0.96, 1.02],
-        '60-70': [0.91, 0.98, 1.03],
-        '70+': [0.92, 0.99, 1.04],
-    };
-
-    const femaleRanges = {
-        '18-29': [0.71, 0.77, 0.82],
-        '30-39': [0.72, 0.78, 0.84],
-        '40-49': [0.73, 0.79, 0.87],
-        '50-59': [0.74, 0.81, 0.88],
-        '60-70': [0.76, 0.83, 0.9],
-        '70+': [0.77, 0.84, 0.92],
-    };
-
-    const saveRecord = async () => {
-        try {
-            // Obtener el token del almacenamiento local
-            const token = await AsyncStorage.getItem('userToken');
-            
-            if (!token) {
-                Alert.alert('Error', 'Debes iniciar sesión para guardar registros');
-                navigation.navigate('Login');
-                return;
-            }
-
-            const response = await fetch(`${API_URL}/users/records`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    name,
-                    idNumber,
-                    bmi,
-                    icc,
-                    gender,
-                    age,
-                }),
-            });
-
-            if (response.ok) {
-                Alert.alert('Éxito', 'Registro guardado correctamente.');
-                setIsSaved(true);
-            } else {
-                const errorData = await response.json();
-                Alert.alert('Error', errorData.message || 'No se pudo guardar el registro.');
-            }
-        } catch (error) {
-            console.error('Error al guardar:', error);
-            Alert.alert('Error', 'No se pudo conectar con el servidor.');
-        }
-    };
-
-    const downloadExcel = async () => {
-        const data = `Nombre,Cédula,BMI,ICC\n${name},${idNumber},${bmi},${icc}`;
-        const fileUri = FileSystem.documentDirectory + 'results.csv';
-        await FileSystem.writeAsStringAsync(fileUri, data, { encoding: FileSystem.EncodingType.UTF8 });
+  const downloadCsv = async () => {
+    try {
+      const data = `Nombre,Cédula,IMC,Categoría,ICC,Riesgo\n${name},${idNumber},${bmi},${category},${icc},${risk}`;
+      const fileUri = FileSystem.documentDirectory + 'resultado-gymstatus.csv';
+      await FileSystem.writeAsStringAsync(fileUri, data, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+      if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(fileUri);
-    };
+      } else {
+        Alert.alert('Guardado', `Archivo generado en: ${fileUri}`);
+      }
+    } catch {
+      Alert.alert('Error', 'No se pudo generar el archivo.');
+    }
+  };
 
-    return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Resultados</Text>
+  return (
+    <Screen center>
+      <Title>Resultados</Title>
 
-            <View style={styles.resultContainer}>
-                <Text style={styles.resultText}>Nombre: {name}</Text>
-                <Text style={styles.resultText}>Cédula: {idNumber}</Text>
-                <Text style={styles.resultText}>IMC: {bmi} ({getBMICategory(bmi)})</Text>
-                <Text style={styles.resultText}>ICC: {icc} ({getICCRisk(icc, gender, age)})</Text>
-            </View>
+      <Card>
+        <Row label="Nombre" value={name} />
+        <Row label="Cédula" value={idNumber} />
+        <View style={styles.divider} />
 
-            {!isSaved && (
-                <TouchableOpacity style={styles.button} onPress={saveRecord}>
-                    <Text style={styles.buttonText}>Guardar Registro</Text>
-                </TouchableOpacity>
-            )}
-
-            <TouchableOpacity style={styles.button} onPress={downloadExcel}>
-                <Text style={styles.buttonText}>Descargar en Excel</Text>
-            </TouchableOpacity>
+        <View style={styles.metric}>
+          <Text style={styles.metricLabel}>IMC</Text>
+          <Text style={styles.metricValue}>{bmi}</Text>
+          <Text style={[styles.badge, { color: bmiColor(category) }]}>{category}</Text>
         </View>
-    );
+
+        <View style={styles.metric}>
+          <Text style={styles.metricLabel}>ICC</Text>
+          <Text style={styles.metricValue}>{icc}</Text>
+          <Text style={[styles.badge, { color: riskColor(risk) }]}>Riesgo {risk}</Text>
+        </View>
+      </Card>
+
+      {!isSaved && (
+        <Button title="Guardar registro" onPress={saveRecord} loading={saving} />
+      )}
+      <Button title="Descargar CSV" variant="secondary" onPress={downloadCsv} />
+    </Screen>
+  );
 };
 
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.row}>
+      <Text style={styles.rowLabel}>{label}</Text>
+      <Text style={styles.rowValue}>{value}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#000000',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 20,
-    },
-    title: {
-        fontSize: 40,
-        fontFamily: 'RubikVinyl-Regular',
-        color: '#32FF09',
-        marginBottom: 20,
-    },
-    resultContainer: {
-        backgroundColor: '#468A34',
-        borderRadius: 10,
-        padding: 20,
-        marginBottom: 20,
-    },
-    resultText: {
-        color: '#FFFFFF',
-        fontSize: 18,
-        fontFamily: 'Inter-Regular',
-        marginBottom: 10,
-    },
-    button: {
-        backgroundColor: '#32FF09',
-        paddingVertical: 15,
-        paddingHorizontal: 50,
-        borderRadius: 30,
-        marginBottom: 15,
-    },
-    buttonText: {
-        color: '#000000',
-        fontSize: 18,
-        fontFamily: 'Inter-Bold',
-        textAlign: 'center',
-    },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  rowLabel: { color: colors.textSecondary, fontSize: fontSize.md, fontFamily: fonts.regular },
+  rowValue: { color: colors.textPrimary, fontSize: fontSize.md, fontFamily: fonts.medium },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.md,
+  },
+  metric: { alignItems: 'center', marginBottom: spacing.lg },
+  metricLabel: { color: colors.textMuted, fontSize: fontSize.sm, fontFamily: fonts.medium },
+  metricValue: {
+    color: colors.textPrimary,
+    fontSize: fontSize.title,
+    fontFamily: fonts.bold,
+  },
+  badge: { fontSize: fontSize.md, fontFamily: fonts.bold, marginTop: spacing.xs },
 });
 
 export default ResultsScreen;

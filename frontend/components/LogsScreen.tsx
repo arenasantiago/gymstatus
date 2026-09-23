@@ -1,151 +1,144 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, Alert } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { Title, Button, EmptyState } from './ui';
+import { colors, spacing, radius, fonts, fontSize } from '../theme';
+import { bmiColor, riskColor } from '../theme';
+import { bmiCategory, iccRisk } from '../services/health';
+import { apiRequest } from '../services/apiClient';
+
+interface Record {
+  _id: string;
+  name: string;
+  idNumber: string;
+  bmi: number;
+  icc: number;
+  gender: string;
+  age: number;
+  createdAt?: string;
+}
 
 const LogsScreen = ({ navigation }: { navigation: any }) => {
-    const [logs, setLogs] = useState([]);
+  const [records, setRecords] = useState<Record[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-    // Función para obtener los registros desde la base de datos
-    const fetchLogs = async () => {
-        try {
-            const response = await fetch('http://localhost:5000/api/users/users');
-            const data = await response.json();
-            if (response.ok) {
-                setLogs(data);
-            } else {
-                Alert.alert('Error', 'No se pudieron cargar los registros.');
-            }
-        } catch (error) {
-            Alert.alert('Error', 'No se pudo conectar con el servidor.');
-        }
-    };
+  const fetchRecords = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await apiRequest<Record[]>('/records', { auth: true });
+      setRecords(data);
+    } catch (err: any) {
+      setError(err.message || 'No se pudieron cargar los registros.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-    // Función para eliminar un registro
-    const deleteLog = async (id: string) => {
-        try {
-            const response = await fetch(`http://localhost:5000/api/users/users/${id}`, {
-                method: 'DELETE',
-            });
-            if (response.ok) {
-                Alert.alert('Éxito', 'Registro eliminado correctamente.');
-                fetchLogs(); // Recargar la lista de registros
-            } else {
-                Alert.alert('Error', 'No se pudo eliminar el registro.');
-            }
-        } catch (error) {
-            Alert.alert('Error', 'No se pudo conectar con el servidor.');
-        }
-    };
+  // Recarga cada vez que la pantalla recibe foco.
+  useFocusEffect(
+    useCallback(() => {
+      fetchRecords();
+    }, [fetchRecords]),
+  );
 
-    // Función para navegar a la pantalla de modificación
-    const navigateToEditLog = (log: any) => {
-        navigation.navigate('EditLog', { log });
-    };
+  const confirmDelete = (id: string) => {
+    Alert.alert('Eliminar registro', '¿Seguro que quieres eliminar este registro?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Eliminar', style: 'destructive', onPress: () => deleteRecord(id) },
+    ]);
+  };
 
-    // Cargar los registros al montar el componente
-    useEffect(() => {
-        fetchLogs();
-    }, []);
+  const deleteRecord = async (id: string) => {
+    try {
+      await apiRequest(`/records/${id}`, { method: 'DELETE', auth: true });
+      setRecords((prev) => prev.filter((r) => r._id !== id));
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'No se pudo eliminar el registro.');
+    }
+  };
 
+  const renderItem = ({ item }: { item: Record }) => {
+    const category = bmiCategory(item.bmi);
+    const risk = iccRisk(item.icc, item.gender, item.age);
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Registros</Text>
-
-            <FlatList
-                data={logs}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                    <View style={styles.logItem}>
-                        <Text style={styles.logMessage}>{item.username}</Text>
-                        <Text style={styles.logDate}>{item.email}</Text>
-                        <View style={styles.buttonsContainer}>
-                            <TouchableOpacity
-                                style={styles.editButton}
-                                onPress={() => navigateToEditLog(item)}
-                            >
-                                <Text style={styles.buttonText}>Modificar</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.deleteButton}
-                                onPress={() => deleteLog(item.id)}
-                            >
-                                <Text style={styles.buttonText}>Eliminar</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                )}
-            />
-
-            <TouchableOpacity
-                style={styles.backButton}
-                onPress={() => navigation.goBack()}
-            >
-                <Text style={styles.buttonText}>Volver</Text>
-            </TouchableOpacity>
+      <View style={styles.card}>
+        <Text style={styles.name}>{item.name}</Text>
+        <Text style={styles.meta}>Cédula: {item.idNumber}</Text>
+        <View style={styles.metricsRow}>
+          <Text style={styles.metric}>
+            IMC {item.bmi} <Text style={{ color: bmiColor(category) }}>({category})</Text>
+          </Text>
+          <Text style={styles.metric}>
+            ICC {item.icc} <Text style={{ color: riskColor(risk) }}>({risk})</Text>
+          </Text>
         </View>
+        <View style={styles.actions}>
+          <Button
+            title="Modificar"
+            onPress={() => navigation.navigate('EditLog', { record: item })}
+          />
+          <View style={styles.actionGap} />
+          <Button title="Eliminar" variant="danger" onPress={() => confirmDelete(item._id)} />
+        </View>
+      </View>
     );
+  };
+
+  return (
+    <View style={styles.container}>
+      <Title>Registros</Title>
+
+      {loading ? (
+        <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.xxl }} />
+      ) : error ? (
+        <View>
+          <EmptyState message={error} />
+          <Button title="Reintentar" onPress={fetchRecords} />
+        </View>
+      ) : (
+        <FlatList
+          data={records}
+          keyExtractor={(item) => item._id}
+          renderItem={renderItem}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={<EmptyState message="Aún no hay registros guardados." />}
+        />
+      )}
+
+      <Button title="Volver" variant="secondary" onPress={() => navigation.goBack()} />
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#000000',
-        padding: 20,
-    },
-    title: {
-        fontSize: 40,
-        fontFamily: 'RubikVinyl-Regular',
-        color: '#32FF09',
-        marginBottom: 20,
-        textAlign: 'center',
-    },
-    logItem: {
-        backgroundColor: '#2E6626',
-        padding: 15,
-        borderRadius: 10,
-        marginBottom: 10,
-    },
-    logMessage: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontFamily: 'Inter-Regular',
-    },
-    logDate: {
-        color: '#A3D2A5',
-        fontSize: 14,
-        fontFamily: 'Inter-Regular',
-        marginTop: 5,
-    },
-    buttonsContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 10,
-    },
-    editButton: {
-        backgroundColor: '#32FF09',
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        borderRadius: 20,
-    },
-    deleteButton: {
-        backgroundColor: '#FF0000',
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        borderRadius: 20,
-    },
-    backButton: {
-        backgroundColor: '#32FF09',
-        paddingVertical: 15,
-        paddingHorizontal: 50,
-        borderRadius: 30,
-        marginTop: 20,
-        alignSelf: 'center',
-    },
-    buttonText: {
-        color: '#000000',
-        fontSize: 16,
-        fontFamily: 'Inter-Bold',
-        textAlign: 'center',
-    },
+  container: { flex: 1, backgroundColor: colors.background, padding: spacing.xl },
+  list: { paddingBottom: spacing.lg },
+  card: {
+    backgroundColor: colors.surfaceSolid,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  name: { color: colors.textPrimary, fontSize: fontSize.lg, fontFamily: fonts.bold },
+  meta: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    fontFamily: fonts.regular,
+    marginTop: spacing.xs,
+  },
+  metricsRow: { marginTop: spacing.sm, marginBottom: spacing.md },
+  metric: {
+    color: colors.textPrimary,
+    fontSize: fontSize.md,
+    fontFamily: fonts.medium,
+    marginBottom: spacing.xs,
+  },
+  actions: { flexDirection: 'row' },
+  actionGap: { width: spacing.md },
 });
 
 export default LogsScreen;

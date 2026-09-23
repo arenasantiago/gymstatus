@@ -1,93 +1,54 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { Alert } from 'react-native';
+import { Screen, Title, Card, Field, Button } from './ui';
+import { apiRequest } from '../services/apiClient';
 
 const EditLogScreen = ({ route, navigation }: { route: any; navigation: any }) => {
-    const { log } = route.params;
-    const [message, setMessage] = useState(log.message);
-    const [date, setDate] = useState(log.date);
+  const { record } = route.params;
+  const [name, setName] = useState(record.name);
+  const [idNumber, setIdNumber] = useState(record.idNumber);
+  const [saving, setSaving] = useState(false);
 
-    // Función para guardar los cambios
-    const saveChanges = async () => {
-        try {
-            const response = await fetch(`http://localhost:5000/api/users/users/${log.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message, date }),
-            });
-            if (response.ok) {
-                Alert.alert('Éxito', 'Registro modificado correctamente.');
-                navigation.goBack();
-            } else {
-                Alert.alert('Error', 'No se pudo modificar el registro.');
-            }
-        } catch (error) {
-            Alert.alert('Error', 'No se pudo conectar con el servidor.');
-        }
-    };
+  const saveChanges = async () => {
+    if (!name || !idNumber) {
+      Alert.alert('Error', 'El nombre y la cédula no pueden estar vacíos.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await apiRequest(`/records/${record._id}`, {
+        method: 'PUT',
+        auth: true,
+        body: { name, idNumber },
+      });
+      Alert.alert('Éxito', 'Registro modificado correctamente.');
+      navigation.goBack();
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'No se pudo modificar el registro.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
-    return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Modificar Registro</Text>
+  return (
+    <Screen center>
+      <Title>Modificar Registro</Title>
 
-            <TextInput
-                style={styles.input}
-                placeholder="Mensaje"
-                placeholderTextColor="#A3D2A5"
-                value={message}
-                onChangeText={setMessage}
-            />
+      <Card>
+        <Field label="Nombre" placeholder="Nombre" value={name} onChangeText={setName} />
+        <Field
+          label="Cédula"
+          placeholder="Cédula"
+          keyboardType="numeric"
+          value={idNumber}
+          onChangeText={setIdNumber}
+        />
+      </Card>
 
-            <TextInput
-                style={styles.input}
-                placeholder="Fecha"
-                placeholderTextColor="#A3D2A5"
-                value={date}
-                onChangeText={setDate}
-            />
-
-            <TouchableOpacity style={styles.saveButton} onPress={saveChanges}>
-                <Text style={styles.buttonText}>Guardar Cambios</Text>
-            </TouchableOpacity>
-        </View>
-    );
+      <Button title="Guardar cambios" onPress={saveChanges} loading={saving} />
+      <Button title="Cancelar" variant="secondary" onPress={() => navigation.goBack()} />
+    </Screen>
+  );
 };
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#000000',
-        padding: 20,
-    },
-    title: {
-        fontSize: 40,
-        fontFamily: 'RubikVinyl-Regular',
-        color: '#32FF09',
-        marginBottom: 20,
-        textAlign: 'center',
-    },
-    input: {
-        backgroundColor: '#2E6626',
-        borderRadius: 5,
-        color: '#FFFFFF',
-        padding: 10,
-        marginBottom: 15,
-        fontSize: 16,
-        fontFamily: 'Inter-Regular',
-    },
-    saveButton: {
-        backgroundColor: '#32FF09',
-        paddingVertical: 15,
-        paddingHorizontal: 50,
-        borderRadius: 30,
-        marginTop: 20,
-        alignSelf: 'center',
-    },
-    buttonText: {
-        color: '#000000',
-        fontSize: 18,
-        fontFamily: 'Inter-Bold',
-        textAlign: 'center',
-    },
-});
 
 export default EditLogScreen;
