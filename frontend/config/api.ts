@@ -3,7 +3,10 @@
  *
  * En React Native `localhost` apunta al propio dispositivo, no a tu PC.
  * Para probar en un dispositivo/emulador real define la variable de entorno
- * de Expo `EXPO_PUBLIC_API_URL` (p. ej. `http://192.168.1.10:5000/api`).
+ * de Expo `EXPO_PUBLIC_API_URL` (p. ej. `http://192.168.1.10:5005/api`).
+ *
+ * El puerto por defecto se puede ajustar con `EXPO_PUBLIC_API_PORT`
+ * (debe coincidir con el PORT del backend en backend/.env).
  *
  * Prioridad:
  *   1. EXPO_PUBLIC_API_URL (si está definida)
@@ -13,7 +16,8 @@
  */
 import { Platform } from 'react-native';
 
-const DEFAULT_PORT = 5000;
+// Debe coincidir con PORT en backend/.env (por defecto 5005).
+const DEFAULT_PORT = process.env.EXPO_PUBLIC_API_PORT || '5005';
 
 function resolveBaseUrl(): string {
   const fromEnv = process.env.EXPO_PUBLIC_API_URL;

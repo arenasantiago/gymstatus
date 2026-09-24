@@ -69,6 +69,21 @@ npm start
    - iOS: `npm run ios`
    - Web: `npm run web`
 
+### Crear el primer usuario
+
+La app incluye una pantalla de **Registro** (botón "Crear cuenta" en el login).
+Como alternativa rápida desde el backend puedes sembrar un usuario de prueba:
+
+```bash
+cd backend
+npm run seed              # crea demo / demo123
+npm run seed juan clave123 juan@correo.com   # usuario personalizado
+```
+
+> El puerto del backend lo define `PORT` en `backend/.env` (por defecto 5005).
+> El frontend usa ese mismo puerto; si lo cambias, ajusta `EXPO_PUBLIC_API_PORT`
+> o `EXPO_PUBLIC_API_URL`.
+
 ## Estructura del Proyecto
 
 ```

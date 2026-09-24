@@ -2,6 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import LoginScreen from '../components/LoginScreen';
+import RegisterScreen from '../components/RegisterScreen';
 import CalculationScreen from '../components/CalculationScreen';
 import LogsScreen from '../components/LogsScreen';
 import ResultsScreen from '../components/ResultsScreen';
@@ -18,6 +19,7 @@ const AppNavigator = () => {
                 screenOptions={{ headerShown: false }}
             >
                 <Stack.Screen name="Login" component={LoginScreen} />
+                <Stack.Screen name="Register" component={RegisterScreen} />
                 <Stack.Screen name="CalculationScreen" component={CalculationScreen} />
                 <Stack.Screen name="Logs" component={LogsScreen} />
                 <Stack.Screen name="Results" component={ResultsScreen} />

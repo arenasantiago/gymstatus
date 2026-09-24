@@ -55,6 +55,11 @@ const LoginScreen = ({ navigation }: { navigation: any }) => {
 
       <Button title="Ingresar" onPress={handleLogin} loading={loading} />
       <Button
+        title="Crear cuenta"
+        variant="secondary"
+        onPress={() => navigation.navigate('Register')}
+      />
+      <Button
         title="Ver registros"
         variant="secondary"
         onPress={() => navigation.navigate('Logs')}
