@@ -19,6 +19,10 @@ services:
     buildCommand: npm ci
     startCommand: node index.js
     healthCheckPath: /api/health
+    # Node fijado en backend/package.json (engines: 24.x) y backend/.node-version.
+    # Un rango abierto (>=20) hace que Render instale la última major (26+),
+    # donde jsonwebtoken → jwa → buffer-equal-constant-time rompe al cargar
+    # (SlowBuffer eliminado) y el servicio muere con "Exited with status 1".
     # Con rootDir, los cambios fuera de backend/ NO despliegan solos: hay que
     # incluir shared/ explícitamente. Las rutas son relativas a la raíz del repo.
     buildFilter:
