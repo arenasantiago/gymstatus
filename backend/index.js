@@ -1,9 +1,7 @@
 require('dotenv').config();
-const express = require('express');
 const mongoose = require('mongoose');
 const dns = require('dns');
-const cors = require('cors');
-const userRoutes = require('./routes/userRoutes');
+const { createApp, allowedOrigins } = require('./app');
 
 // Algunos entornos (DNS IPv6 / VPN / redes corporativas) no resuelven los
 // registros SRV de `mongodb+srv://` y Node falla con `querySrv ECONNREFUSED`.
@@ -13,40 +11,15 @@ if (process.env.DNS_OVERRIDE !== 'off') {
     dns.setServers(['8.8.8.8', '1.1.1.1']);
 }
 
-const app = express();
-const PORT = process.env.PORT || 5000;
+// Mismo valor por defecto que el frontend (frontend/config/api.ts).
+const PORT = process.env.PORT || 5005;
 
-// Lista de orígenes permitidos
-const allowedOrigins = [
-    'http://localhost:19006',  // Expo Web
-    'http://localhost:19000',  // Expo Dev Server
-    'exp://localhost:19000',   // Expo Go
-    'http://localhost:3000',   // React Development Server
-    'http://localhost:8081',   // Vue Development Server
-    'http://localhost:5000',   // Backend Development Server
-];
+if (!process.env.JWT_SECRET) {
+    console.error('❌ Falta JWT_SECRET en backend/.env (ver backend/.env.example).');
+    process.exit(1);
+}
 
-// Configura CORS con opciones más seguras
-app.use(cors({
-    origin: function(origin, callback) {
-        // Permitir solicitudes sin origen (como aplicaciones móviles o curl)
-        if (!origin) return callback(null, true);
-        
-        if (allowedOrigins.indexOf(origin) === -1) {
-            const msg = 'La política CORS no permite el acceso desde este origen.';
-            return callback(new Error(msg), false);
-        }
-        return callback(null, true);
-    },
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true, // Permite el envío de cookies
-    maxAge: 86400 // Cache preflight requests por 24 horas
-}));
-
-// Middleware
-app.use(express.json());
-app.use('/api/users', userRoutes);
+const app = createApp();
 
 // Función para conectar a MongoDB con reintentos
 async function connectWithRetry(retries = 5, delay = 5000) {
@@ -66,11 +39,6 @@ async function connectWithRetry(retries = 5, delay = 5000) {
     return false;
 }
 
-// Rutas de ejemplo
-app.get('/', (req, res) => {
-    res.send('Backend funcionando');
-});
-
 // Iniciar el servidor solo si la conexión a MongoDB es exitosa
 connectWithRetry().then(connected => {
     if (connected) {
@@ -85,4 +53,3 @@ connectWithRetry().then(connected => {
         process.exit(1);
     }
 });
-

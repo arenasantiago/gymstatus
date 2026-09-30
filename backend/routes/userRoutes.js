@@ -6,26 +6,16 @@ const {
     getUserById,
     updateUser,
     deleteUser,
-    createRecord,
-    getRecords,
-    updateRecord,
-    deleteRecord,
 } = require('../controllers/userController');
 
 const authMiddleware = require('../middleware/auth');
 const router = express.Router();
 
-// Rutas públicas
+// Autenticación (públicas)
 router.post('/register', registerUser);
 router.post('/login', loginUser);
 
-// Registros de salud (requieren autenticación)
-router.post('/records', authMiddleware, createRecord);
-router.get('/records', authMiddleware, getRecords);
-router.put('/records/:id', authMiddleware, updateRecord);
-router.delete('/records/:id', authMiddleware, deleteRecord);
-
-// Gestión de usuarios (requieren autenticación)
+// Cuenta propia (requieren sesión; cada usuario solo se ve y gestiona a sí mismo)
 router.get('/users', authMiddleware, getUsers);
 router.get('/users/:id', authMiddleware, getUserById);
 router.put('/users/:id', authMiddleware, updateUser);

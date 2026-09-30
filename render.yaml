@@ -1,0 +1,42 @@
+# Infraestructura como código para Render (https://render.com/docs/blueprint-spec).
+#
+# Solo el backend vive en Render (necesita un proceso Node + MongoDB); el
+# frontend web se despliega en Vercel (ver vercel.json y .env.production).
+#
+# Un servicio creado a mano desde el dashboard NO lee este archivo: hay que
+# replicar estos valores en Settings, o crear el servicio con
+# Render → New → Blueprint → este repo (si ya existe uno con el mismo `name`,
+# elimínalo antes o cambia el nombre).
+services:
+  - type: web
+    name: gymstatus
+    runtime: node
+    plan: free
+    branch: master
+    # Los comandos corren dentro de backend/, pero el repo completo está
+    # disponible: backend/ requiere ../shared (motor de cálculo).
+    rootDir: backend
+    buildCommand: npm ci
+    startCommand: node index.js
+    healthCheckPath: /api/health
+    # Con rootDir, los cambios fuera de backend/ NO despliegan solos: hay que
+    # incluir shared/ explícitamente. Las rutas son relativas a la raíz del repo.
+    buildFilter:
+      paths:
+        - backend/**
+        - shared/**
+    envVars:
+      # PORT lo inyecta Render; el backend lee process.env.PORT.
+      - key: NODE_ENV
+        value: production
+      # Cadena de MongoDB Atlas. Se pide al crear el Blueprint; nunca va en el repo.
+      - key: MONGODB_URI
+        sync: false
+      # Render genera un secreto aleatorio y largo.
+      - key: JWT_SECRET
+        generateValue: true
+      # Dominio del frontend en Vercel (sin barra final). Varios: separados por comas.
+      - key: CORS_ORIGINS
+        value: https://gymstatus-frontend.vercel.app
+      - key: JWT_EXPIRES_IN
+        value: 12h

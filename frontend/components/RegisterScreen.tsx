@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Alert } from 'react-native';
 import { Screen, Title, Subtitle, Card, Field, Button } from './ui';
-import { apiRequest } from '../services/apiClient';
+import { apiRequest, errorMessage } from '../services/apiClient';
 import { saveToken } from '../services/auth';
+import { notify } from '../services/dialogs';
+import type { ScreenProps } from '../Navigation/types';
 
-const RegisterScreen = ({ navigation }: { navigation: any }) => {
+const RegisterScreen = ({ navigation }: ScreenProps<'Register'>) => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -12,16 +13,16 @@ const RegisterScreen = ({ navigation }: { navigation: any }) => {
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
-    if (!username || !email || !password) {
-      Alert.alert('Error', 'Completa usuario, correo y contraseña.');
+    if (!username.trim() || !email.trim() || !password) {
+      notify('Faltan datos', 'Completa usuario, correo y contraseña.');
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres.');
+      notify('Contraseña muy corta', 'La contraseña debe tener al menos 6 caracteres.');
       return;
     }
     if (password !== confirm) {
-      Alert.alert('Error', 'Las contraseñas no coinciden.');
+      notify('Revisa la contraseña', 'Las contraseñas no coinciden.');
       return;
     }
 
@@ -30,17 +31,17 @@ const RegisterScreen = ({ navigation }: { navigation: any }) => {
       // Crear la cuenta.
       await apiRequest('/users/register', {
         method: 'POST',
-        body: { username, email, password },
+        body: { username: username.trim(), email: email.trim(), password },
       });
       // Iniciar sesión automáticamente tras el registro.
       const data = await apiRequest<{ token: string }>('/users/login', {
         method: 'POST',
-        body: { username, password },
+        body: { username: username.trim(), password },
       });
       await saveToken(data.token);
-      navigation.replace('CalculationScreen');
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'No se pudo crear la cuenta.');
+      navigation.reset({ index: 0, routes: [{ name: 'Athletes' }] });
+    } catch (error) {
+      notify('No se pudo crear la cuenta', errorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -49,13 +50,14 @@ const RegisterScreen = ({ navigation }: { navigation: any }) => {
   return (
     <Screen center>
       <Title>Crear cuenta</Title>
-      <Subtitle>Regístrate para empezar</Subtitle>
+      <Subtitle>Para entrenadores, preparadores físicos, clubes y centros de rendimiento</Subtitle>
 
       <Card>
         <Field
           label="Usuario"
           placeholder="Elige un usuario"
           autoCapitalize="none"
+          autoCorrect={false}
           value={username}
           onChangeText={setUsername}
         />
@@ -64,6 +66,7 @@ const RegisterScreen = ({ navigation }: { navigation: any }) => {
           placeholder="tu@correo.com"
           autoCapitalize="none"
           keyboardType="email-address"
+          textContentType="emailAddress"
           value={email}
           onChangeText={setEmail}
         />
@@ -71,6 +74,7 @@ const RegisterScreen = ({ navigation }: { navigation: any }) => {
           label="Contraseña"
           placeholder="Mínimo 6 caracteres"
           secureTextEntry
+          textContentType="newPassword"
           value={password}
           onChangeText={setPassword}
         />
@@ -80,15 +84,12 @@ const RegisterScreen = ({ navigation }: { navigation: any }) => {
           secureTextEntry
           value={confirm}
           onChangeText={setConfirm}
+          onSubmitEditing={handleRegister}
         />
+        <Button title="Crear cuenta" onPress={handleRegister} loading={loading} />
       </Card>
 
-      <Button title="Crear cuenta" onPress={handleRegister} loading={loading} />
-      <Button
-        title="Ya tengo cuenta"
-        variant="secondary"
-        onPress={() => navigation.goBack()}
-      />
+      <Button title="Ya tengo cuenta" variant="ghost" onPress={() => navigation.goBack()} />
     </Screen>
   );
 };

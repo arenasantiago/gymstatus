@@ -13,7 +13,8 @@ const authMiddleware = (req, res, next) => {
         req.user = decoded; // Inyecta los datos del usuario en la solicitud
         next();
     } catch (error) {
-        res.status(400).json({ message: "Token inválido" });
+        // 401 (no 400) para que la app detecte la sesión vencida y vuelva al login.
+        res.status(401).json({ message: "Sesión expirada o token inválido. Inicia sesión de nuevo." });
     }
 };
 
