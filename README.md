@@ -122,9 +122,9 @@ Los errores llegan como JSON `{ "message": "...", "errors": { campo: mensaje } }
 | GET    | `/health`                     | No   | Comprobación de vida (`{ ok: true }`).               |
 | POST   | `/users/register`             | No   | Crear cuenta de entrenador.                          |
 | POST   | `/users/login`                | No   | Iniciar sesión; devuelve el JWT.                     |
-| GET    | `/users/:id`                  | Sí   | Ver la propia cuenta.                                |
-| PUT    | `/users/:id`                  | Sí   | Editar la propia cuenta.                             |
-| DELETE | `/users/:id`                  | Sí   | Eliminar la cuenta y todos sus datos.                |
+| GET    | `/users/users/:id`            | Sí   | Ver la propia cuenta.                                |
+| PUT    | `/users/users/:id`            | Sí   | Editar la propia cuenta.                             |
+| DELETE | `/users/users/:id`            | Sí   | Eliminar la cuenta y todos sus datos.                |
 | GET    | `/athletes`                   | Sí   | Atletas del entrenador con resumen de su última evaluación. |
 | POST   | `/athletes`                   | Sí   | Crear atleta.                                        |
 | GET    | `/athletes/:id`               | Sí   | Atleta con su historial de evaluaciones.             |
