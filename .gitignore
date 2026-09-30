@@ -38,3 +38,10 @@ yarn-error.*
 # env (secrets)
 backend/.env
 .env
+
+# IDEs
+.idea/
+.vscode/
+
+# Vercel CLI (proyecto enlazado localmente)
+.vercel/
